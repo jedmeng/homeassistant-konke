@@ -4,16 +4,20 @@
 
 - Mini K
 
-![Mini K](http://www.ikonke.com/pro/miniK/images/minik_img1.png)
+![Mini K](https://p5.ssl.qhimg.com/dm/300_300_/t01763cbb0d461968a5.png)
 - Mini Pro
 
-![Mini Pro](https://img.alicdn.com/imgextra/i2/2259671767/TB2ZgLZi4rI8KJjy0FpXXb5hVXa_!!2259671767.jpg_430x430q90.jpg)
+![Mini Pro](https://p2.ssl.qhimg.com/dm/300_300_/t01da45d0484178dfab.jpg)
 - Smart Plug K(untested)
 
-![K](https://gd4.alicdn.com/imgextra/i4/322866315/TB2KOYpbgMPMeJjy1XcXXXpppXa_!!322866315.jpg_400x400.jpg_.webp)
+![K](https://p1.ssl.qhimg.com/dm/300_300_/t016c9c239d8d71fb78.jpg)
 - K2 Pro(untested)
 
-![K2](https://img.alicdn.com/imgextra/i4/2259671767/TB2THHQtXXXXXcoXpXXXXXXXXXX_!!2259671767.jpg_430x430q90.jpg)
+![K2](https://p1.ssl.qhimg.com/dm/300_300_/t019a7103eb99573480.jpg)
+
+- (cnct) intelliPLUG (Mini K us version, untested)
+
+![intelliPLUG](https://p5.ssl.qhimg.com/dm/300_300_/t0166baaec86aa83a4b.jpg)
 
 # Install
 copy the `custom_components` to your home-assistant config directory.
