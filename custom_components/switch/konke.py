@@ -46,7 +46,7 @@ class KonkeSwitch(SwitchDevice):
         return self.device.status == 'open'
 
     def update(self):
-        self.device.check()
+        self.device.update()
 
     def turn_on(self, **kwargs):
         result = self.device.turn_on()
