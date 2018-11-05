@@ -11,15 +11,16 @@ import time
 import voluptuous as vol
 
 from homeassistant.components.switch import SwitchDevice, PLATFORM_SCHEMA
-from homeassistant.const import CONF_NAME, CONF_HOST, CONF_MODEL
+from homeassistant.const import CONF_NAME, CONF_HOST
 import homeassistant.helpers.config_validation as cv
 
-REQUIREMENTS = ['pykonkeio=2.0.1b0']
+REQUIREMENTS = ['pykonkeio']
 
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = 'Konke Outlet'
 
+CONF_MODEL = 'model'
 MODEL_K1 = ['smart plugin', 'k1']
 MODEL_K2 = ['k2', 'k2 pro']
 MODEL_MINIK = ['minik', 'minik pro']
@@ -38,7 +39,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
-def setup_platform(hass, config, add_devices, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     name = config[CONF_NAME]
     host = config[CONF_HOST]
     model = config[CONF_MODEL]
@@ -54,8 +55,9 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
         else:
             return False
 
+        powerstrip = KonkePowerStrip(device, name)
         for i in range(device.socket_count):
-            entities.append(KonkePowerStripOutlet(device, name, i))  # @fixme
+            entities.append(KonkePowerStripOutlet(powerstrip, name, i))
     else:
         if model is None:
             from pykonkeio.device import BaseToggle
@@ -66,6 +68,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
         elif model in MODEL_K2:
             from pykonkeio.device import K2
             device = K2(host)
+            entities.append(KonKeUsbSwitch(name, device))
         elif model in MODEL_MINIK:
             from pykonkeio.device import MiniK
             device = MiniK(host)
@@ -76,7 +79,8 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
                 'and provide the following data: %s', model)
             return False
         entities.append(KonkeOutlet(name, device, model))
-    add_devices(entities)
+    await device.fetch_info()
+    async_add_entities(entities)
 
 
 class KonkeOutlet(SwitchDevice):
@@ -95,7 +99,7 @@ class KonkeOutlet(SwitchDevice):
     @property
     def available(self) -> bool:
         """Return True if outlet is available."""
-        return self._device.online
+        return self._device.is_online
 
     @property
     def unique_id(self):
@@ -112,27 +116,91 @@ class KonkeOutlet(SwitchDevice):
         """Instruct the outlet to turn on."""
         return self._device.status == 'open'
 
-    def turn_on(self, **kwargs):
+    @property
+    def current_power_w(self):
+        """Return the current power usage in W."""
+        return self._current_power_w
+
+    async def async_turn_on(self, **kwargs):
         """Instruct the outlet to turn on."""
-        self._device.turn_on()
+        await self._device.turn_on()
         _LOGGER.debug("Turn on outlet %s", self.unique_id)
 
-    def turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs):
         """Instruct the outlet to turn off."""
-        self._device.turn_off()
+        await self._device.turn_off()
         _LOGGER.debug("Turn off outlet %s", self.unique_id)
 
-    def update(self):
+    async def async_update(self):
         """Synchronize state with outlet."""
-        self._device.update()
+        from pykonkeio.error import DeviceOffline
+        prev_available = self.available
+        try:
+            await self._device.update(type='relay')
 
-        if self._model in MODEL_K2:
-            self._current_power_w = self._device.get_power()
+            if self._model in MODEL_K2:
+                self._current_power_w = await self._device.get_power()
+        except DeviceOffline:
+            if prev_available:
+                _LOGGER.warning('Device is offline %s', self.entity_id)
+
+
+
+class KonKeUsbSwitch(SwitchDevice):
+    def __init__(self, name, device):
+        self._name = name
+        self._device = device
+
+    @property
+    def should_poll(self) -> bool:
+        """Poll the plug."""
+        return True
+
+    @property
+    def available(self) -> bool:
+        """Return True if outlet is available."""
+        return self._device.is_online
+
+    @property
+    def unique_id(self):
+        """Return unique ID for light."""
+        return '%s:usb' % self._device.mac
+
+    @property
+    def name(self):
+        """Return the display name of this outlet."""
+        return '%s_usb' % self._name
+
+    @property
+    def is_on(self):
+        """Instruct the outlet to turn on."""
+        return self._device.usb_status == 'open'
+
+    async def async_turn_on(self, **kwargs):
+        """Instruct the outlet to turn on."""
+        await self._device.turn_on_usb()
+        _LOGGER.debug("Turn on usb %s", self.unique_id)
+
+    async def async_turn_off(self, **kwargs):
+        """Instruct the outlet to turn off."""
+        await self._device.turn_off_usb()
+        _LOGGER.debug("Turn off usb %s", self.unique_id)
+
+    async def async_update(self):
+        """Synchronize state with outlet."""
+        from pykonkeio.error import DeviceOffline
+        prev_available = self.available
+        try:
+            await self._device.update(type='usb')
+        except DeviceOffline:
+            if prev_available:
+                _LOGGER.warning('Device is offline %s', self.entity_id)
+
 
 
 class KonkePowerStrip(object):
 
-    def __init__(self, name, device):
+    def __init__(self, device, name: str):
         """Initialize the power strip."""
         self._name = name
         self._device = device
@@ -141,7 +209,7 @@ class KonkePowerStrip(object):
     @property
     def available(self) -> bool:
         """Return True if outlet is available."""
-        return self._device.available
+        return self._device.is_online
 
     @property
     def unique_id(self):
@@ -157,25 +225,31 @@ class KonkePowerStrip(object):
         """Return true if outlet is on."""
         return self._device.status[index]
 
-    def turn_on(self, index):
+    async def async_turn_on(self, index):
         """Instruct the outlet to turn on."""
-        self._device.turn_on(index)
+        await self._device.turn_on(index)
 
-    def turn_off(self, index):
+    async def async_turn_off(self, index):
         """Instruct the outlet to turn off."""
-        self._device.turn_off(index)
+        await self._device.turn_off(index)
 
-    def update(self):
+    async def async_update(self):
         """Synchronize state with power strip."""
+        from pykonkeio.error import DeviceOffline
+        prev_available = self.available
         if time.time() - self._last_update >= UPDATE_DEBONCE:
-            self._device.update()
             self._last_update = time.time()
+            try:
+                await self._device.update()
+            except DeviceOffline:
+                if prev_available:
+                    _LOGGER.warning('Device is offline %s', self.unique_id)
 
 
 class KonkePowerStripOutlet(SwitchDevice):
     """Outlet in Konke Power Strip."""
 
-    def __init__(self, powerstrip, name, index):
+    def __init__(self, powerstrip: KonkePowerStrip, name: str, index: int):
         """Initialize the outlet."""
         self._powerstrip = powerstrip
         self._index = index
@@ -190,7 +264,7 @@ class KonkePowerStripOutlet(SwitchDevice):
     @property
     def available(self) -> bool:
         """Return True if outlet is available."""
-        return self._powerstrip.online
+        return self._powerstrip.available
 
     @property
     def unique_id(self):
@@ -207,18 +281,17 @@ class KonkePowerStripOutlet(SwitchDevice):
         """Return true if outlet is on."""
         return self._powerstrip.get_status(self._index)
 
-    def turn_on(self, **kwargs):
+    async def async_turn_on(self, **kwargs):
         """Instruct the outlet to turn on."""
-        self._powerstrip.turn_on(self._index)
+        await self._powerstrip.async_turn_on(self._index)
         _LOGGER.debug("Turn on outlet %s", self.unique_id)
 
-    def turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs):
         """Instruct the outlet to turn off."""
-        self._powerstrip.turn_off(self._index)
+        await self._powerstrip.async_turn_off(self._index)
         _LOGGER.debug("Turn off outlet %s", self.unique_id)
 
-    def update(self):
+    async def async_update(self):
         """Synchronize state with power strip."""
-        self._powerstrip.update()
-
+        await self._powerstrip.async_update()
 
