@@ -20,8 +20,10 @@ from homeassistant.util.color import \
     color_temperature_mired_to_kelvin as mired_to_kelvin
 from homeassistant.util.color import \
     color_hs_to_RGB as hs_to_RGB
+from homeassistant.util.color import \
+    color_RGB_to_hs as RGB_to_hs
 
-REQUIREMENTS = ['pykonkeio']
+REQUIREMENTS = ['pykonkeio==2.1.1']
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +31,7 @@ DEFAULT_NAME = "Konke Light"
 
 CONF_MODEL = 'model'
 MODEL_KLIGHT = 'klight'
-MODEL_KBULB = 'kblub'
+MODEL_KBULB = 'kbulb'
 MODEL_K2_LIGHT = 'k2_light'
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
@@ -42,14 +44,14 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 KBLUB_MIN_KELVIN = 2700
-KBLUB_MAX_KELVIN = 6500
+KBLUB_MAX_KELVIN = 6493
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up Konke light platform."""
     name = config[CONF_NAME]
     host = config[CONF_HOST]
-    model = config[CONF_MODEL]
+    model = config[CONF_MODEL].lower()
 
     if model == MODEL_KLIGHT:
         from pykonkeio.device import KLight
@@ -75,10 +77,6 @@ class KonkeLight(Light):
         self._name = name
         self._model = model
         self._device = device
-        self._is_on = None
-        self._brightness = None
-        self._color_temp = None
-        self._color = None
 
     @property
     def available(self) -> bool:
@@ -109,12 +107,17 @@ class KonkeLight(Light):
     @property
     def brightness(self) -> int:
         """Return the brightness of the light."""
-        return self._brightness
+        return self._device.brightness / 100 * 255
+
+    @property
+    def hs_color(self):
+        """Return the hs color value."""
+        return RGB_to_hs(*self._device.color)
 
     @property
     def color_temp(self) -> float:
         """Return the color temperature of this light."""
-        return kelvin_to_mired(self._color_temp)
+        return kelvin_to_mired(self._device.ct)
 
     @property
     def min_mireds(self) -> float:
@@ -147,14 +150,14 @@ class KonkeLight(Light):
 
         if ATTR_BRIGHTNESS in kwargs and \
                 self.brightness != kwargs[ATTR_BRIGHTNESS]:
-            await self._device.set_brightness(kwargs[ATTR_BRIGHTNESS])
+            await self._device.set_brightness(int(round(kwargs[ATTR_BRIGHTNESS] * 100 / 255)))
 
         if ATTR_COLOR_TEMP in kwargs and \
                 self.color_temp != kwargs[ATTR_COLOR_TEMP]:
             await self._device.set_ct(mired_to_kelvin(kwargs[ATTR_COLOR_TEMP]))
 
         if ATTR_HS_COLOR in kwargs and \
-                self._color != kwargs[ATTR_HS_COLOR]:
+                self.hs_color != kwargs[ATTR_HS_COLOR]:
             hs_color = kwargs[ATTR_HS_COLOR]
             rgb_color = hs_to_RGB(*hs_color)
             await self._device.set_color(*rgb_color)
