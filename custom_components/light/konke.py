@@ -23,7 +23,7 @@ from homeassistant.util.color import \
 from homeassistant.util.color import \
     color_RGB_to_hs as RGB_to_hs
 
-REQUIREMENTS = ['pykonkeio>=2.1.5']
+REQUIREMENTS = ['pykonkeio>=2.1.7']
 
 _LOGGER = logging.getLogger(__name__)
 
