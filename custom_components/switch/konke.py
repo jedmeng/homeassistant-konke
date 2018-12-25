@@ -2,7 +2,7 @@
 Support for the Konke outlet.
 
 For more details about this platform, please refer to the documentation at
-https://home-assistant.io/components/light.opple/
+https://home-assistant.io/components/switch.konke/
 """
 
 import logging
@@ -40,8 +40,10 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Set up Konke switch platform."""
     from pykonkeio.manager import get_device
     from pykonkeio.error import DeviceNotSupport
+
     name = config[CONF_NAME]
     host = config[CONF_HOST]
     model = config[CONF_MODEL].lower()
@@ -61,7 +63,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         for i in range(device.socket_count):
             entities.append(KonkePowerStripOutlet(powerstrip, name, i))
 
-        for i in range(device.usb_count or 0):
+        for i in range(device.usb_count if hasattr(device, 'usb_count') else 0):
             entities.append(KonkePowerStripUSB(powerstrip, name, i))
     else:
         entities.append(KonkeOutlet(name, device, model))
@@ -91,8 +93,8 @@ class KonkeOutlet(SwitchDevice):
 
     @property
     def unique_id(self):
-        """Return unique ID for light."""
-        return self._device.mac
+        """Return unique ID for switch."""
+        return self._device.uuid
 
     @property
     def name(self):
@@ -150,8 +152,8 @@ class KonkeUsbSwitch(SwitchDevice):
 
     @property
     def unique_id(self):
-        """Return unique ID for light."""
-        return '%s:usb' % self._device.mac
+        """Return unique ID for switch."""
+        return '%s:usb' % self._device.uuid
 
     @property
     def name(self):
@@ -184,7 +186,6 @@ class KonkeUsbSwitch(SwitchDevice):
                 _LOGGER.warning('Device is offline %s', self.entity_id)
 
 
-
 class KonkePowerStrip(object):
 
     def __init__(self, device, name: str):
@@ -201,7 +202,7 @@ class KonkePowerStrip(object):
     @property
     def unique_id(self):
         """Return unique ID for outlet."""
-        return self._device.mac
+        return self._device.uuid
 
     @property
     def name(self):

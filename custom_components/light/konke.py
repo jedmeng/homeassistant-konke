@@ -1,8 +1,8 @@
 """
-Support for the Opple light.
+Support for the Konke light.
 
 For more details about this platform, please refer to the documentation at
-https://home-assistant.io/components/light.opple/
+https://home-assistant.io/components/light.konke/
 """
 
 import logging
@@ -49,19 +49,21 @@ KBLUB_MAX_KELVIN = 6493
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up Konke light platform."""
+    from pykonkeio.manager import get_device
+    from pykonkeio.error import DeviceNotSupport
+
     name = config[CONF_NAME]
     host = config[CONF_HOST]
     model = config[CONF_MODEL].lower()
 
-    if model == MODEL_KLIGHT:
-        from pykonkeio.device import KLight
-        device = KLight(host)
-    elif model == MODEL_KBULB:
-        from pykonkeio.device import KBulb
-        device = KBulb(host)
-    else:
-        from pykonkeio.device import K2
-        device = K2(host)
+    try:
+        device = get_device(host, model)
+    except DeviceNotSupport:
+        _LOGGER.error(
+            'Unsupported device found! Please create an issue at '
+            'https://github.com/jedmeng/python-konkeio/issues '
+            'and provide the following data: %s', model)
+        return False
 
     entity = KonkeLight(device, name, model)
     async_add_entities([entity])
@@ -86,10 +88,10 @@ class KonkeLight(Light):
     @property
     def unique_id(self) -> str:
         """Return unique ID for light."""
-        if self._device.mac and self._model == MODEL_K2_LIGHT:
-            return self._device.mac + ':light'
+        if self._model == MODEL_K2_LIGHT:
+            return self._device.uuid + ':light'
         else:
-            return self._device.mac
+            return self._device.uuid
 
     @property
     def name(self) -> str:
