@@ -17,7 +17,7 @@ from homeassistant.const import (
     ATTR_ENTITY_ID, CONF_COMMAND)
 import homeassistant.helpers.config_validation as cv
 
-REQUIREMENTS = ['pykonkeio>=2.1.7']
+REQUIREMENTS = ['pykonkeio>=2.1.8']
 
 _LOGGER = logging.getLogger(__name__)
 
