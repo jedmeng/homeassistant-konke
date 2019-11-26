@@ -1,6 +1,6 @@
 {
 "domain": "konke",
-"name": "konke",
+"name": "控客智能",
 "documentation": "https://github.com/jedmeng/homeassistant-konke",
 "dependencies": [],
 "codeowners": ["@jedmeng"],
