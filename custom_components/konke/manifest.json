@@ -1,0 +1,8 @@
+{
+"domain": "konke",
+"name": "konke",
+"documentation": "https://github.com/jedmeng/homeassistant-konke",
+"dependencies": [],
+"codeowners": ["@jedmeng"],
+"requirements": ["pykonkeio==2.1.7"]
+}
