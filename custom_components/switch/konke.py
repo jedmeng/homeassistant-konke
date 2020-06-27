@@ -2,7 +2,7 @@
 Support for the Konke outlet.
 
 For more details about this platform, please refer to the documentation at
-https://home-assistant.io/components/switch.konke/
+https://home-assistant.io/components/light.opple/
 """
 
 import logging
@@ -10,11 +10,11 @@ import time
 
 import voluptuous as vol
 
-from homeassistant.components.switch import SwitchDevice, PLATFORM_SCHEMA
+from homeassistant.components.switch import SwitchEntity, PLATFORM_SCHEMA
 from homeassistant.const import CONF_NAME, CONF_HOST
 import homeassistant.helpers.config_validation as cv
 
-REQUIREMENTS = ['pykonkeio>=2.1.8']
+REQUIREMENTS = ['pykonkeio>=2.1.7']
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,10 +40,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up Konke switch platform."""
     from pykonkeio.manager import get_device
     from pykonkeio.error import DeviceNotSupport
-
     name = config[CONF_NAME]
     host = config[CONF_HOST]
     model = config[CONF_MODEL].lower()
@@ -63,7 +61,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         for i in range(device.socket_count):
             entities.append(KonkePowerStripOutlet(powerstrip, name, i))
 
-        for i in range(device.usb_count if hasattr(device, 'usb_count') else 0):
+        for i in range(device.usb_count or 0):
             entities.append(KonkePowerStripUSB(powerstrip, name, i))
     else:
         entities.append(KonkeOutlet(name, device, model))
@@ -73,7 +71,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities(entities)
 
 
-class KonkeOutlet(SwitchDevice):
+class KonkeOutlet(SwitchEntity):
 
     def __init__(self, name, device, model=None):
         self._name = name
@@ -93,8 +91,8 @@ class KonkeOutlet(SwitchDevice):
 
     @property
     def unique_id(self):
-        """Return unique ID for switch."""
-        return self._device.uuid
+        """Return unique ID for light."""
+        return self._device.mac
 
     @property
     def name(self):
@@ -135,7 +133,7 @@ class KonkeOutlet(SwitchDevice):
                 _LOGGER.warning('Device is offline %s', self.entity_id)
 
 
-class KonkeUsbSwitch(SwitchDevice):
+class KonkeUsbSwitch(SwitchEntity):
     def __init__(self, name, device):
         self._name = name
         self._device = device
@@ -152,8 +150,8 @@ class KonkeUsbSwitch(SwitchDevice):
 
     @property
     def unique_id(self):
-        """Return unique ID for switch."""
-        return '%s:usb' % self._device.uuid
+        """Return unique ID for light."""
+        return '%s:usb' % self._device.mac
 
     @property
     def name(self):
@@ -186,6 +184,7 @@ class KonkeUsbSwitch(SwitchDevice):
                 _LOGGER.warning('Device is offline %s', self.entity_id)
 
 
+
 class KonkePowerStrip(object):
 
     def __init__(self, device, name: str):
@@ -202,7 +201,7 @@ class KonkePowerStrip(object):
     @property
     def unique_id(self):
         """Return unique ID for outlet."""
-        return self._device.uuid
+        return self._device.mac
 
     @property
     def name(self):
@@ -246,7 +245,7 @@ class KonkePowerStrip(object):
                     _LOGGER.warning('Device is offline %s', self.unique_id)
 
 
-class KonkePowerStripOutlet(SwitchDevice):
+class KonkePowerStripOutlet(SwitchEntity):
     """Outlet in Konke Power Strip."""
 
     def __init__(self, powerstrip: KonkePowerStrip, name: str, index: int):
@@ -296,7 +295,7 @@ class KonkePowerStripOutlet(SwitchDevice):
         await self._powerstrip.async_update()
 
 
-class KonkePowerStripUSB(SwitchDevice):
+class KonkePowerStripUSB(SwitchEntity):
     """Outlet in Konke Power Strip."""
 
     def __init__(self, powerstrip: KonkePowerStrip, name: str, index: int):
