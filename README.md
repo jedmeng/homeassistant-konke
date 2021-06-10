@@ -1,3 +1,6 @@
+
+修改原插件为新版本Home Assistant支持，目前测试支持0.103版本。
+
 [Home Assistant](https://www.home-assistant.io/) component of [Konke](http://www.ikonke.com/) devices
 
 # Supported Devices
